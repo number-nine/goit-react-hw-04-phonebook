@@ -1,5 +1,4 @@
 import PropTypes from 'prop-types';
-import { Component } from 'react';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import { Formik} from 'formik';
 

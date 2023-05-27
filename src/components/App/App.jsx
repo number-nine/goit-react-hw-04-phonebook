@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useEffect, useState } from 'react';
 import { nanoid } from 'nanoid';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 
@@ -12,27 +12,41 @@ import getUsers from '../../controllers/data-controller';
 import { Container } from 'components/App/App.styled';
 import { Button } from 'components/common.styled';
 
-class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
+const App = () => {
+
+  const getContactsFromLocalStorage = () => {
+    if (!window.localStorage.getItem('contacts')) {
+      return [];
+    }
+    try {
+      const contacts = JSON.parse(window.localStorage.contacts);
+      return contacts;
+    } catch (error) {
+      Notify.failure(`Can't read from Local Storage. ${error.message}`);
+      return [];
+    }
   };
 
-  addContact = ({ name, number }) => {
+  const [filter, setFilter] = useState('');
+  const [contacts, setContacts] = useState(() => getContactsFromLocalStorage());
+
+  useEffect(() => {
+    window.localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
+
+
+
+  const addContact = ({ name, number }) => {
     return new Promise((resolve, reject) => {
-      if (this.isNameUniq(name)) {
-        this.setState(({ contacts }) => {
-          return {
-            contacts: [
-              ...contacts,
-              {
-                id: nanoid(),
-                name: name.trim(),
-                number: number.trim(),
-              },
-            ],
-          };
-        });
+      if (isNameUniq(name)) {
+        setContacts(state => [
+          ...state,
+          {
+            id: nanoid(),
+            name: name.trim(),
+            number: number.trim(),
+          },
+        ]);
         resolve(`New contact ${name} successfully added`);
       } else {
         reject(new Error(`${name} is already in contacts`));
@@ -40,10 +54,10 @@ class App extends Component {
     });
   };
 
-  handleFillPhonebook = () =>
+  const handleFillPhonebook = () =>
     getUsers().then(result =>
       result.forEach(contact => {
-        this.addContact(contact)
+        addContact(contact)
           .then(result => Notify.success(result))
           .catch(({ message }) => {
             Notify.failure(message);
@@ -51,82 +65,60 @@ class App extends Component {
       })
     );
 
-  isNameUniq = nameToAdd =>
-    !this.state.contacts
+  const isNameUniq = nameToAdd =>
+    !contacts
       .map(({ name }) => name.toLowerCase())
       .includes(nameToAdd.toLowerCase());
 
-  onChange = e => {
-    const { name, value } = e.target;
-    this.setState({ [name]: value });
+  const onFilterChange = e => {
+    const { value } = e.target;
+    setFilter(value);
   };
 
-  handleDeleteContact = idToRemove => {
-    this.setState(({ contacts }) => ({
-      contacts: contacts.filter(({ id }) => id !== idToRemove),
-    }));
+  const handleDeleteContact = idToRemove => {
+    setContacts(state => state.filter(({ id }) => id !== idToRemove));
     Notify.success('Contact succesfully removed');
   };
 
-  handleResetFilter = () => {
-    this.setState({ filter: '' });
+  const handleResetFilter = () => {
+    setFilter('');
   };
 
-  filterContacts = (contacts, filter) => {
+  const filterContacts = (contacts, filter) => {
     if (!filter.trim()) {
-      return this.state.contacts;
+      return contacts;
     }
     return contacts.filter(({ name }) =>
       name.toLowerCase().includes(filter.trim().toLowerCase())
     );
   };
 
-  componentDidUpdate() {
-    localStorage.setItem('contacts', JSON.stringify(this.state.contacts));
-  }
+  return (
+    <Container>
+      <Button type="button" onClick={handleFillPhonebook}>
+        Randomise Data
+      </Button>
 
-  componentDidMount() {
-    if (!localStorage.getItem('contacts')) {
-      return;
-    }
-      try {
-        const contacts = JSON.parse(localStorage.contacts);
-        this.setState({ contacts });
-      } catch (error) {
-        Notify.failure(`Can't reade from Local Storage. ${error.message}`);
-      }
-  }
+      <Section title="Add Contact">
+        <ContactEditor onSubmit={addContact} />
+      </Section>
 
-  render() {
-    return (
-      <Container>
-        <Button type="button" onClick={this.handleFillPhonebook}>
-          Randomise Data
-        </Button>
+      <Section title="Filter by Name">
+        <Filter
+          filter={filter}
+          onChange={onFilterChange}
+          onReset={handleResetFilter}
+        />
+      </Section>
+      <Section title="Contacts List">
+        <ContactsList
+          contacts={filterContacts(contacts, filter)}
+          onClick={handleDeleteContact}
+        />
+      </Section>
+    </Container>
+  );
+};
 
-        <Section title="Add Contact">
-          <ContactEditor onSubmit={this.addContact} />
-        </Section>
-
-        <Section title="Filter by Name">
-          <Filter
-            filter={this.state.filter}
-            onChange={this.onChange}
-            onReset={this.handleResetFilter}
-          />
-        </Section>
-        <Section title="Contacts List">
-          <ContactsList
-            contacts={this.filterContacts(
-              this.state.contacts,
-              this.state.filter
-            )}
-            onClick={this.handleDeleteContact}
-          />
-        </Section>
-      </Container>
-    );
-  }
-}
 
 export default App;
