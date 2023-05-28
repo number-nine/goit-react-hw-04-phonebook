@@ -14,12 +14,12 @@ import { Button } from 'components/common.styled';
 
 const App = () => {
 
-  const getContactsFromLocalStorage = () => {
-    if (!window.localStorage.getItem('contacts')) {
+  const getFromLocalStorage = param => {
+    if (!window.localStorage.getItem(param)) {
       return [];
     }
     try {
-      const contacts = JSON.parse(window.localStorage.contacts);
+      const contacts = JSON.parse(window.localStorage[param]);
       return contacts;
     } catch (error) {
       Notify.failure(`Can't read from Local Storage. ${error.message}`);
@@ -28,7 +28,7 @@ const App = () => {
   };
 
   const [filter, setFilter] = useState('');
-  const [contacts, setContacts] = useState(() => getContactsFromLocalStorage());
+  const [contacts, setContacts] = useState(() => getFromLocalStorage('contacts'));
 
   useEffect(() => {
     window.localStorage.setItem('contacts', JSON.stringify(contacts));
